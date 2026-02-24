@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tree of Life</title>
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #060d06;
+    }
+
+    #canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* ── Loading Overlay ── */
+    #loading {
+      position: fixed;
+      inset: 0;
+      background: #060d06;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      font-family: 'Courier New', Courier, monospace;
+      color: #7bc950;
+      gap: 14px;
+      transition: opacity 0.8s ease;
+    }
+
+    #loading.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loading-title {
+      font-size: 22px;
+      letter-spacing: 8px;
+      font-weight: normal;
+      opacity: 0.95;
+    }
+
+    .loading-subtitle {
+      font-size: 11px;
+      letter-spacing: 4px;
+      opacity: 0.5;
+    }
+
+    .loading-bar-wrap {
+      width: 180px;
+      height: 1px;
+      background: rgba(123, 201, 80, 0.15);
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .loading-bar {
+      height: 100%;
+      background: #7bc950;
+      animation: loadPulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes loadPulse {
+      0%   { width: 0%;   opacity: 1; }
+      60%  { width: 80%;  opacity: 1; }
+      100% { width: 100%; opacity: 0; }
+    }
+
+    /* ── HUD ── */
+    #hud {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Courier New', Courier, monospace;
+      text-align: center;
+      pointer-events: none;
+      user-select: none;
+      display: none;
+    }
+
+    #visit-count {
+      font-size: 13px;
+      letter-spacing: 3px;
+      color: rgba(123, 201, 80, 0.85);
+      margin-bottom: 4px;
+    }
+
+    #tree-stats {
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: rgba(123, 201, 80, 0.35);
+      margin-bottom: 8px;
+    }
+
+    #controls-hint {
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: rgba(123, 201, 80, 0.2);
+    }
+
+    /* ── Title (top-left) ── */
+    #title {
+      position: fixed;
+      top: 28px;
+      left: 32px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 11px;
+      letter-spacing: 5px;
+      color: rgba(123, 201, 80, 0.35);
+      pointer-events: none;
+      user-select: none;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <div id="loading">
+    <div class="loading-title">TREE OF LIFE</div>
+    <div class="loading-subtitle">GROWING FROM SEED</div>
+    <div class="loading-bar-wrap">
+      <div class="loading-bar"></div>
+    </div>
+  </div>
+
+  <div id="title">TREE OF LIFE</div>
+
+  <div id="hud">
+    <div id="visit-count"></div>
+    <div id="tree-stats"></div>
+    <div id="controls-hint">DRAG TO ORBIT · SCROLL TO ZOOM</div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
