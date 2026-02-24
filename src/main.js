@@ -23,6 +23,7 @@ import { createSpaceSystem }  from './space/spaceSystem.js'
 import { loadDesk }           from './objects/deskSystem.js'
 import { loadGuitar }         from './objects/guitarSystem.js'
 import { loadBookshelf }      from './objects/bookshelfSystem.js'
+import { loadGravestone }     from './objects/gravestoneSystem.js'
 import { createVideoScreen }  from './objects/videoScreen.js'
 import { createMonitorScreen } from './objects/monitorScreen.js'
 
@@ -89,6 +90,7 @@ async function init() {
   // ── Props ─────────────────────────────────────────────────────────────
   loadBookshelf(scene, trunkRadius)
   loadGuitar(scene, trunkRadius)
+  loadGravestone(scene, trunkHeight)
 
   // Click detection — shared across all clickable meshes
   const clickCaster  = new THREE.Raycaster()
