@@ -26,6 +26,7 @@ import { loadBookshelf }      from './objects/bookshelfSystem.js'
 import { loadGravestone }     from './objects/gravestoneSystem.js'
 import { createVideoScreen }  from './objects/videoScreen.js'
 import { createMonitorScreen } from './objects/monitorScreen.js'
+import { flyCamera }          from './core/cinematic.js'
 
 // ── DOM refs ──────────────────────────────────────────────────────────────
 const canvas      = document.getElementById('canvas')
@@ -90,7 +91,32 @@ async function init() {
   // ── Props ─────────────────────────────────────────────────────────────
   loadBookshelf(scene, trunkRadius)
   loadGuitar(scene, trunkRadius)
-  loadGravestone(scene, trunkHeight)
+  let gravestoneLabel = null
+  let graveFly        = null
+  loadGravestone(scene, trunkHeight, (stoneGroup, combined, camPos, camTarget) => {
+    gravestoneLabel = combined
+    stoneGroup.traverse((child) => {
+      if (child.isMesh) {
+        clickTargets.push(child)
+        child.userData.onClick = () => {
+          if (combined.isOpen()) {
+            // Second click — close the cards
+            combined.close()
+          } else {
+            // First click — fly in, then reveal
+            if (graveFly && !graveFly.done) return
+            graveFly = flyCamera({
+              camera, controls,
+              endPos:    camPos,
+              endTarget: camTarget,
+              duration:  2.5,
+              onComplete: () => combined.trigger(),
+            })
+          }
+        }
+      }
+    })
+  })
 
   // Click detection — shared across all clickable meshes
   const clickCaster  = new THREE.Raycaster()
@@ -200,20 +226,23 @@ async function init() {
     hoverMouse.y = -(e.clientY / window.innerHeight) * 2 + 1
 
     hoverCaster.setFromCamera(hoverMouse, camera)
-    const hits = hoverCaster.intersectObjects(videoScreens)
 
-    if (hits.length > 0) {
-      const vid = hits[0].object.userData.videoEl
+    // Pointer cursor for anything clickable (gravestone, monitor, video screen)
+    const clickHits = hoverCaster.intersectObjects(clickTargets)
+    const videoHits = hoverCaster.intersectObjects(videoScreens)
+    canvas.style.cursor = (clickHits.length > 0 || videoHits.length > 0) ? 'pointer' : ''
+
+    // Video audio toggle
+    if (videoHits.length > 0) {
+      const vid = videoHits[0].object.userData.videoEl
       if (activeVideo !== vid) {
         if (activeVideo) activeVideo.muted = true
         vid.muted   = false
         activeVideo = vid
-        canvas.style.cursor = 'pointer'
       }
     } else if (activeVideo) {
-      activeVideo.muted   = true
-      activeVideo         = null
-      canvas.style.cursor = ''
+      activeVideo.muted = true
+      activeVideo       = null
     }
   })
 
@@ -238,11 +267,17 @@ async function init() {
 
   // ── Animation loop ───────────────────────────────────────────────────
   const clock = new THREE.Clock()
+  let prevElapsed = 0
 
   function animate() {
     requestAnimationFrame(animate)
 
     const elapsed = clock.getElapsedTime()
+    const dt      = elapsed - prevElapsed
+    prevElapsed   = elapsed
+
+    // Camera fly (gravestone click)
+    graveFly?.tick(dt)
 
     // Leaf wind — update time uniform once shader has compiled
     if (leafMaterial.userData.shader) {
@@ -251,6 +286,9 @@ async function init() {
 
     // Monitor screen canvas
     monitorUpdate()
+
+    // Gravestone floating label
+    gravestoneLabel?.update(dt, camera)
 
     // Nebula pulse
     updateCosmic(elapsed)
