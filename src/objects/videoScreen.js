@@ -60,11 +60,22 @@ export function createVideoScreen({ src, position, width = 10, height }) {
   )
   glowMesh.position.z = -0.04
 
+  // ── Back panel — visible when viewed from behind ───────────────────────
+  // Rotated 180° so its face points in the −Z direction (away from the screen)
+  const backMat  = new THREE.MeshBasicMaterial({ color: 0x1a1a1a })
+  const backMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(width + bezelW, h + bezelW),
+    backMat
+  )
+  backMesh.rotation.y = Math.PI
+  backMesh.position.z = -0.06   // just behind the glow plane
+
   // ── Group ──────────────────────────────────────────────────────────────
   const group = new THREE.Group()
   group.add(glowMesh)
   group.add(frameMesh)
   group.add(screenMesh)
+  group.add(backMesh)
   group.position.copy(position)
 
   return { group, screenMesh, videoEl }

@@ -24,6 +24,7 @@ import { loadDesk }           from './objects/deskSystem.js'
 import { loadGuitar }         from './objects/guitarSystem.js'
 import { loadBookshelf }      from './objects/bookshelfSystem.js'
 import { createVideoScreen }  from './objects/videoScreen.js'
+import { createMonitorScreen } from './objects/monitorScreen.js'
 
 // ── DOM refs ──────────────────────────────────────────────────────────────
 const canvas      = document.getElementById('canvas')
@@ -72,7 +73,7 @@ async function init() {
   scene.add(spaceGroup)
 
   // ── Ground disc (shadow receiver under the grass blades) ─────────────
-  const groundRadius = Math.max(80, trunkHeight * 3.5)
+  const groundRadius = Math.max(70, trunkHeight * 3.2)
   const groundGeo    = new THREE.CircleGeometry(groundRadius, 64)
   const groundMat    = new THREE.MeshStandardMaterial({
     color: 0x0a1e04,
@@ -86,16 +87,100 @@ async function init() {
   scene.add(groundDisc)
 
   // ── Props ─────────────────────────────────────────────────────────────
-  loadDesk(scene, trunkRadius)
   loadBookshelf(scene, trunkRadius)
   loadGuitar(scene, trunkRadius)
+
+  // Click detection — shared across all clickable meshes
+  const clickCaster  = new THREE.Raycaster()
+  const clickMouse   = new THREE.Vector2()
+  const clickTargets = []
+
+  canvas.addEventListener('click', (e) => {
+    clickMouse.x =  (e.clientX / window.innerWidth)  * 2 - 1
+    clickMouse.y = -(e.clientY / window.innerHeight) * 2 + 1
+    clickCaster.setFromCamera(clickMouse, camera)
+    const hits = clickCaster.intersectObjects(clickTargets)
+    if (hits.length > 0) hits[0].object.userData.onClick?.()
+  })
+
+  // ── Monitor screen (created once the desk GLB has loaded) ─────────────
+  // monitorUpdate starts as a no-op and is replaced when the desk loads.
+  let monitorUpdate = () => {}
+
+  loadDesk(scene, trunkRadius, (deskGroup) => {
+    // Log every mesh name so we can identify the screen mesh exactly
+    console.log('[desk meshes]')
+    deskGroup.traverse((child) => {
+      if (child.isMesh) console.log(' •', child.name)
+    })
+
+    // Find the screen mesh — checks common naming conventions
+    const SCREEN_KEYWORDS = ['screen', 'monitor', 'display', 'glass', 'lcd']
+    let screenMesh = null
+    deskGroup.traverse((child) => {
+      if (screenMesh || !child.isMesh) return
+      const n = child.name.toLowerCase()
+      if (SCREEN_KEYWORDS.some(k => n.includes(k))) screenMesh = child
+    })
+
+    // World position & normal of the screen face
+    const pos  = new THREE.Vector3()
+    const quat = new THREE.Quaternion()
+    const norm = new THREE.Vector3()
+
+    if (screenMesh) {
+      screenMesh.getWorldPosition(pos)
+      screenMesh.getWorldQuaternion(quat)
+      // Nudge slightly along the mesh's world +Z so the overlay sits in front
+      norm.set(0, 0, 1).applyQuaternion(quat)
+      pos.addScaledVector(norm, 0.05)
+      console.log('[desk] screen mesh found:', screenMesh.name, pos)
+    } else {
+      // Fallback: centre of the desk bounding box, near the top
+      const b = new THREE.Box3().setFromObject(deskGroup)
+      b.getCenter(pos)
+      pos.y = b.min.y + (b.max.y - b.min.y) * 0.85
+      quat.setFromEuler(new THREE.Euler(0, -Math.PI * 0.25 + (160 * Math.PI / 180), 0))
+      console.log('[desk] no screen mesh found — using fallback position', pos)
+    }
+
+    const MONITOR_Y_OFFSET = 2.6    // move up (+) or down (−)
+    const MONITOR_TILT     = 90   // tip forward (+) or backward (−), degrees
+    const MONITOR_SPIN     = 10    // rotate around the tilted screen's own normal, degrees
+    const MONITOR_PAN      = 88    // rotate around the axis perpendicular to SPIN, degrees
+
+    // Each quaternion is applied in the local frame of the previous,
+    // so all three axes stay fully independent of each other.
+    const tiltQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), MONITOR_TILT * (Math.PI / 180))
+    const spinQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), MONITOR_SPIN * (Math.PI / 180))
+    const panQ  = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), MONITOR_PAN  * (Math.PI / 180))
+    const finalQuat = quat.clone().multiply(tiltQ).multiply(spinQ).multiply(panQ)
+
+    const MONITOR_FORWARD  = 0.48    // push toward camera (+) or away (−)
+
+    pos.y += MONITOR_Y_OFFSET
+    const screenNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(finalQuat)
+    pos.addScaledVector(screenNormal, MONITOR_FORWARD)
+    const euler = new THREE.Euler().setFromQuaternion(finalQuat)
+
+    const { mesh: monitorMesh, update } = createMonitorScreen({
+      position: pos,
+      rotation: euler,
+      width:  4.2,
+      height: 2.4,
+    })
+
+    scene.add(monitorMesh)
+    clickTargets.push(monitorMesh)
+    monitorUpdate = update
+  })
 
   // ── Video screens ─────────────────────────────────────────────────────
   const videoScreens = []   // grows as more screens are added
 
   const { group: screen1Group, screenMesh: screen1Mesh } = createVideoScreen({
     src:      '/assets/SyntheticSoul.mp4',
-    position: new THREE.Vector3(trunkRadius * 2 + 25, 18, -20),
+    position: new THREE.Vector3(trunkRadius * 2 + 25, 18, -40),
     width:    10,
   })
   // Face the screen toward the camera's starting position (stay vertical)
@@ -132,7 +217,7 @@ async function init() {
 
   // ── Aim camera at tree ───────────────────────────────────────────────
   const cameraRadius = Math.max(30, trunkHeight * 2.5)
-  camera.position.set(cameraRadius * 0.8, trunkHeight * 0.7, cameraRadius * 0.8)
+  camera.position.set(cameraRadius * 0.4, trunkHeight * 0.5, cameraRadius * 0.4)
   controls.target.set(0, trunkHeight * 0.45, 0)
   controls.update()
 
@@ -161,6 +246,9 @@ async function init() {
     if (leafMaterial.userData.shader) {
       leafMaterial.userData.shader.uniforms.time.value = elapsed
     }
+
+    // Monitor screen canvas
+    monitorUpdate()
 
     // Nebula pulse
     updateCosmic(elapsed)

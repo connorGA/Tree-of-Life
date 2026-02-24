@@ -25,7 +25,7 @@ export function createCamera(domElement) {
 
   // Stop auto-rotate on user interaction, resume after idle
   let idleTimer = null
-  const resumeDelay = 6000 // ms
+  const resumeDelay = 120_000 // 2 minutes idle before auto-rotate resumes
 
   function onInteract() {
     controls.autoRotate = false
@@ -57,7 +57,7 @@ export function createCamera(domElement) {
     _raycaster.setFromCamera(_mouse, camera)
     _dir.copy(_raycaster.ray.direction)
 
-    const step = -e.deltaY * 0.15
+    const step = -e.deltaY * 0.35
     camera.position.addScaledVector(_dir, step)
     controls.target.addScaledVector(_dir, step)
   }, { passive: false })
