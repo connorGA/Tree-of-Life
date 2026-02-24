@@ -134,6 +134,7 @@ async function init() {
   // ── Monitor screen (created once the desk GLB has loaded) ─────────────
   // monitorUpdate starts as a no-op and is replaced when the desk loads.
   let monitorUpdate = () => {}
+  let deskFly       = null
 
   loadDesk(scene, trunkRadius, (deskGroup) => {
     // Log every mesh name so we can identify the screen mesh exactly
@@ -199,8 +200,39 @@ async function init() {
     })
 
     scene.add(monitorMesh)
-    clickTargets.push(monitorMesh)
     monitorUpdate = update
+
+    // ── Camera fly-to: position in front of the monitor screen ───────────
+    const deskCamPos    = pos.clone().addScaledVector(screenNormal, 5)
+    const deskCamTarget = pos.clone()
+
+    function flyToDesk(onArrival) {
+      if (deskFly && !deskFly.done) return
+      // Already close enough — skip the fly and fire the callback directly
+      if (camera.position.distanceTo(deskCamPos) < 4) {
+        onArrival?.()
+        return
+      }
+      deskFly = flyCamera({
+        camera, controls,
+        endPos:    deskCamPos,
+        endTarget: deskCamTarget,
+        duration:  2.0,
+        onComplete: onArrival,
+      })
+    }
+
+    // All desk GLB meshes — clicking any part flies you to the monitor
+    deskGroup.traverse((child) => {
+      if (!child.isMesh) return
+      clickTargets.push(child)
+      child.userData.onClick = () => flyToDesk()
+    })
+
+    // Monitor canvas overlay — fly in first, then trigger the typewriter
+    const savedMonitorClick = monitorMesh.userData.onClick
+    clickTargets.push(monitorMesh)
+    monitorMesh.userData.onClick = () => flyToDesk(savedMonitorClick)
   })
 
   // ── Video screens ─────────────────────────────────────────────────────
@@ -276,8 +308,9 @@ async function init() {
     const dt      = elapsed - prevElapsed
     prevElapsed   = elapsed
 
-    // Camera fly (gravestone click)
+    // Camera flies
     graveFly?.tick(dt)
+    deskFly?.tick(dt)
 
     // Leaf wind — update time uniform once shader has compiled
     if (leafMaterial.userData.shader) {
