@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 
-const MESSAGE    = "Hi! My name's Connor. Welcome to my sandbox. Feel free to hang around and enjoy the view. Check out some of the stuff I've built scattered around my desk."
+const MESSAGE    = "Hi! My name's Connor. Welcome to my sandbox. Every visit helps the tree grow, so thanks for stopping by. Feel free to hang around and enjoy the view. Check out some of the stuff I've built scattered around my desk."
 const CHAR_DELAY = 35     // ms between typed characters
 const BLINK_RATE = 530    // ms per cursor toggle
 

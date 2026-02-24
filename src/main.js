@@ -147,7 +147,7 @@ async function init() {
     const MONITOR_Y_OFFSET = 2.6    // move up (+) or down (−)
     const MONITOR_TILT     = 90   // tip forward (+) or backward (−), degrees
     const MONITOR_SPIN     = 10    // rotate around the tilted screen's own normal, degrees
-    const MONITOR_PAN      = 88    // rotate around the axis perpendicular to SPIN, degrees
+    const MONITOR_PAN      = 89    // rotate around the axis perpendicular to SPIN, degrees
 
     // Each quaternion is applied in the local frame of the previous,
     // so all three axes stay fully independent of each other.
