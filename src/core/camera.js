@@ -19,9 +19,7 @@ export function createCamera(domElement) {
   const controls = new OrbitControls(camera, domElement)
   controls.enableDamping = true
   controls.dampingFactor = 0.06
-  controls.minDistance = 3
-  controls.maxDistance = 600
-  controls.maxPolarAngle = Math.PI * 0.92  // prevent flipping under ground
+  controls.enableZoom = false   // replaced with custom unrestricted zoom below
   controls.autoRotate = true
   controls.autoRotateSpeed = 0.4
 
@@ -38,7 +36,31 @@ export function createCamera(domElement) {
   }
 
   domElement.addEventListener('pointerdown', onInteract, { passive: true })
-  domElement.addEventListener('wheel', onInteract, { passive: true })
+
+  // Custom zoom — casts a ray through the mouse cursor and moves both
+  // camera and orbit target along that exact direction.  No distance limit,
+  // no target wall — the camera flies straight toward wherever the mouse points.
+  const _raycaster = new THREE.Raycaster()
+  const _mouse     = new THREE.Vector2()
+  const _dir       = new THREE.Vector3()
+
+  domElement.addEventListener('wheel', (e) => {
+    e.preventDefault()
+    onInteract()
+
+    // Cursor position in normalised device coordinates (−1..+1)
+    const rect = domElement.getBoundingClientRect()
+    _mouse.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1
+    _mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1
+
+    // Direction from camera through the cursor in world space
+    _raycaster.setFromCamera(_mouse, camera)
+    _dir.copy(_raycaster.ray.direction)
+
+    const step = -e.deltaY * 0.15
+    camera.position.addScaledVector(_dir, step)
+    controls.target.addScaledVector(_dir, step)
+  }, { passive: false })
 
   return { camera, controls }
 }
