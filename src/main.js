@@ -23,6 +23,7 @@ import { createSpaceSystem }  from './space/spaceSystem.js'
 import { loadDesk }           from './objects/deskSystem.js'
 import { loadGuitar }         from './objects/guitarSystem.js'
 import { loadBookshelf }      from './objects/bookshelfSystem.js'
+import { createVideoScreen }  from './objects/videoScreen.js'
 
 // ── DOM refs ──────────────────────────────────────────────────────────────
 const canvas      = document.getElementById('canvas')
@@ -88,6 +89,46 @@ async function init() {
   loadDesk(scene, trunkRadius)
   loadBookshelf(scene, trunkRadius)
   loadGuitar(scene, trunkRadius)
+
+  // ── Video screens ─────────────────────────────────────────────────────
+  const videoScreens = []   // grows as more screens are added
+
+  const { group: screen1Group, screenMesh: screen1Mesh } = createVideoScreen({
+    src:      '/assets/SyntheticSoul.mp4',
+    position: new THREE.Vector3(trunkRadius * 2 + 25, 18, -20),
+    width:    10,
+  })
+  // Face the screen toward the camera's starting position (stay vertical)
+  screen1Group.lookAt(new THREE.Vector3(camera.position.x, 18, camera.position.z))
+  scene.add(screen1Group)
+  videoScreens.push(screen1Mesh)
+
+  // ── Video hover — unmute on enter, mute on leave ───────────────────
+  const hoverCaster = new THREE.Raycaster()
+  const hoverMouse  = new THREE.Vector2()
+  let   activeVideo = null
+
+  window.addEventListener('mousemove', (e) => {
+    hoverMouse.x =  (e.clientX / window.innerWidth)  * 2 - 1
+    hoverMouse.y = -(e.clientY / window.innerHeight) * 2 + 1
+
+    hoverCaster.setFromCamera(hoverMouse, camera)
+    const hits = hoverCaster.intersectObjects(videoScreens)
+
+    if (hits.length > 0) {
+      const vid = hits[0].object.userData.videoEl
+      if (activeVideo !== vid) {
+        if (activeVideo) activeVideo.muted = true
+        vid.muted   = false
+        activeVideo = vid
+        canvas.style.cursor = 'pointer'
+      }
+    } else if (activeVideo) {
+      activeVideo.muted   = true
+      activeVideo         = null
+      canvas.style.cursor = ''
+    }
+  })
 
   // ── Aim camera at tree ───────────────────────────────────────────────
   const cameraRadius = Math.max(30, trunkHeight * 2.5)
