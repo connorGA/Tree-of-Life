@@ -101,6 +101,7 @@ function makeCard(project, worldPos) {
   }
 
   draw(1)   // prime texture
+  mesh.userData.project = project   // expose for click handler
 
   return { mesh, draw }
 }

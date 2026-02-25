@@ -6,21 +6,33 @@ import { createProjectCards  } from './projectCards.js'
 const TARGET_HEIGHT = 5
 
 // ── Edit your failed (or any) projects here ─────────────────────────────────
+// ── Edit your projects here ──────────────────────────────────────────────────
+// siteUrl / githubUrl: leave as '' to hide the button in the sidebar
+// notes: supports multi-line text (use \n for line breaks)
 const PROJECTS = [
   {
     title:     'App Concept',
     desc:      'Had a great idea. Built half of it. Decided it was a terrible idea.',
     accentRGB: '100, 140, 255',
+    siteUrl:   '',
+    githubUrl: '',
+    notes:     'Add your notes here.\n\nWhat went wrong:\n- Note 1\n- Note 2',
   },
   {
     title:     'Game Prototype',
     desc:      'Three weeks of tutorials. One weekend of actual work. Zero shipped.',
     accentRGB: '180, 100, 255',
+    siteUrl:   '',
+    githubUrl: '',
+    notes:     'Add your notes here.\n\nWhat went wrong:\n- Note 1\n- Note 2',
   },
   {
     title:     'CLI Tool',
     desc:      'Automated a task I do once a year. Spent two months building it.',
     accentRGB: '100, 210, 190',
+    siteUrl:   '',
+    githubUrl: '',
+    notes:     'Add your notes here.\n\nWhat went wrong:\n- Note 1\n- Note 2',
   },
 ]
 
@@ -95,12 +107,10 @@ export function loadGravestone(scene, trunkHeight, onLoaded) {
           label.update(dt, camera)
           cards.update(dt, camera)
         },
-        trigger() {
-          label.show()
-          cards.show()
-        },
-        isOpen()  { return cards.isActive() },
-        close()   { cards.hide() },
+        trigger()    { label.show(); cards.show() },
+        isOpen()     { return cards.isActive() },
+        close()      { cards.hide() },
+        cardMeshes:  cards.meshes,
       }
 
       onLoaded?.(stone, combined, camPos, camTarget)

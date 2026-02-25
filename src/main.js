@@ -27,6 +27,7 @@ import { loadGravestone }     from './objects/gravestoneSystem.js'
 import { createVideoScreen }  from './objects/videoScreen.js'
 import { createMonitorScreen } from './objects/monitorScreen.js'
 import { flyCamera }          from './core/cinematic.js'
+import { createSidebar }      from './ui/sidebar.js'
 
 // ── DOM refs ──────────────────────────────────────────────────────────────
 const canvas      = document.getElementById('canvas')
@@ -41,6 +42,8 @@ const GROW_DURATION = 2.8   // seconds for newest branch to grow in
 
 // ── Main async boot ───────────────────────────────────────────────────────
 async function init() {
+
+  const sidebar = createSidebar()
 
   // Three.js foundation
   const renderer             = createRenderer(canvas)
@@ -95,15 +98,15 @@ async function init() {
   let graveFly        = null
   loadGravestone(scene, trunkHeight, (stoneGroup, combined, camPos, camTarget) => {
     gravestoneLabel = combined
+
+    // Gravestone body — click toggles the fly-in + cards
     stoneGroup.traverse((child) => {
       if (child.isMesh) {
         clickTargets.push(child)
         child.userData.onClick = () => {
           if (combined.isOpen()) {
-            // Second click — close the cards
             combined.close()
           } else {
-            // First click — fly in, then reveal
             if (graveFly && !graveFly.done) return
             graveFly = flyCamera({
               camera, controls,
@@ -115,6 +118,12 @@ async function init() {
           }
         }
       }
+    })
+
+    // Project cards — clicking one opens the sidebar with that project's info
+    combined.cardMeshes.forEach((mesh) => {
+      clickTargets.push(mesh)
+      mesh.userData.onClick = () => sidebar.open(mesh.userData.project)
     })
   })
 
@@ -128,7 +137,10 @@ async function init() {
     clickMouse.y = -(e.clientY / window.innerHeight) * 2 + 1
     clickCaster.setFromCamera(clickMouse, camera)
     const hits = clickCaster.intersectObjects(clickTargets)
-    if (hits.length > 0) hits[0].object.userData.onClick?.()
+    if (hits.length > 0) {
+      e.stopPropagation()   // prevent backdrop-close listeners from firing
+      hits[0].object.userData.onClick?.()
+    }
   })
 
   // ── Monitor screen (created once the desk GLB has loaded) ─────────────
@@ -233,6 +245,32 @@ async function init() {
     const savedMonitorClick = monitorMesh.userData.onClick
     clickTargets.push(monitorMesh)
     monitorMesh.userData.onClick = () => flyToDesk(savedMonitorClick)
+
+    // Re-align the two extra screens now that we know the desk's real position.
+    // Centre sits directly above the monitor; left mirrors the right through that centre.
+    const lookTarget = new THREE.Vector3(camera.position.x, 18, camera.position.z)
+
+    const S2_OFFSET_X =  -2    // nudge centre screen left(−) / right(+)
+    const S2_OFFSET_Y =  0    // nudge centre screen down(−) / up(+)
+    const S2_OFFSET_Z =  -4    // nudge centre screen toward(−) / away(+)
+    const S2_ROTATE_Y =  4    // tilt centre screen: left side forward(+) / backward(−), degrees
+
+    const S3_OFFSET_X =  -1.5    // nudge left screen left(−) / right(+)
+    const S3_OFFSET_Y =  0    // nudge left screen down(−) / up(+)
+    const S3_OFFSET_Z =  -2   // nudge left screen toward(−) / away(+)
+    const S3_ROTATE_Y =  20    // tilt left screen: left side forward(+) / backward(−), degrees
+
+    screen2Group.position.set(pos.x + S2_OFFSET_X, 18 + S2_OFFSET_Y, pos.z + S2_OFFSET_Z)
+    screen2Group.lookAt(lookTarget)
+    screen2Group.rotateY(S2_ROTATE_Y * Math.PI / 180)
+
+    screen3Group.position.set(
+      2 * pos.x - (trunkRadius * 2 + 25) + S3_OFFSET_X,
+      18 + S3_OFFSET_Y,
+      2 * pos.z - (-40) + S3_OFFSET_Z,
+    )
+    screen3Group.lookAt(lookTarget)
+    screen3Group.rotateY(S3_ROTATE_Y * Math.PI / 180)
   })
 
   // ── Video screens ─────────────────────────────────────────────────────
@@ -247,6 +285,57 @@ async function init() {
   screen1Group.lookAt(new THREE.Vector3(camera.position.x, 18, camera.position.z))
   scene.add(screen1Group)
   videoScreens.push(screen1Mesh)
+
+  // ── Centre screen — directly above the desk ───────────────────────────
+  const { group: screen2Group, screenMesh: screen2Mesh } = createVideoScreen({
+    src:      '/assets/project2.mp4',   // swap with your video
+    position: new THREE.Vector3(trunkRadius * 2 + 40, 18, -40),
+    width:    10,
+  })
+  screen2Group.lookAt(new THREE.Vector3(camera.position.x, 18, camera.position.z))
+  scene.add(screen2Group)
+  videoScreens.push(screen2Mesh)
+
+  // ── Left screen — exact mirror of the right ────────────────────────────
+  const { group: screen3Group, screenMesh: screen3Mesh } = createVideoScreen({
+    src:      '/assets/project3.mp4',   // swap with your video
+    position: new THREE.Vector3(trunkRadius * 2 + 55, 18, -40),
+    width:    10,
+  })
+  screen3Group.lookAt(new THREE.Vector3(camera.position.x, 18, camera.position.z))
+  scene.add(screen3Group)
+  videoScreens.push(screen3Mesh)
+
+  // ── Sidebar project data for each screen ─────────────────────────────
+  const videoProject = {
+    title:     'Synthetic Soul',
+    desc:      'Add a short description of this project here.',
+    accentRGB: '255, 100, 180',
+    siteUrl:   '',
+    githubUrl: '',
+    notes:     'Add your notes about this project here.',
+  }
+  const videoProject2 = {
+    title:     'Project Two',
+    desc:      'Add a short description of this project here.',
+    accentRGB: '100, 200, 255',
+    siteUrl:   '',
+    githubUrl: '',
+    notes:     'Add your notes about this project here.',
+  }
+  const videoProject3 = {
+    title:     'Project Three',
+    desc:      'Add a short description of this project here.',
+    accentRGB: '140, 255, 160',
+    siteUrl:   '',
+    githubUrl: '',
+    notes:     'Add your notes about this project here.',
+  }
+
+  screen1Mesh.userData.onClick = () => sidebar.open(videoProject)
+  screen2Mesh.userData.onClick = () => sidebar.open(videoProject2)
+  screen3Mesh.userData.onClick = () => sidebar.open(videoProject3)
+  clickTargets.push(screen1Mesh, screen2Mesh, screen3Mesh)
 
   // ── Video hover — unmute on enter, mute on leave ───────────────────
   const hoverCaster = new THREE.Raycaster()
