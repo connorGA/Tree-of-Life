@@ -288,7 +288,7 @@ async function init() {
 
   // ── Centre screen — directly above the desk ───────────────────────────
   const { group: screen2Group, screenMesh: screen2Mesh } = createVideoScreen({
-    src:      '/assets/project2.mp4',   // swap with your video
+    src:      '/assets/Course Engine_30_EM (1).mp4',
     position: new THREE.Vector3(trunkRadius * 2 + 40, 18, -40),
     width:    10,
   })
